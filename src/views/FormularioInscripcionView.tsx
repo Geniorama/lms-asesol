@@ -164,6 +164,58 @@ export default function FormularioInscripcionView() {
   const identidadLGBTIQ = watch("calculadoraPuntaje.identidadLGBTIQ");
   const esMigrante = watch("calculadoraPuntaje.esMigrante");
 
+  // Validación centralizada de todas las condiciones de bloqueo
+  useEffect(() => {
+    // 1. Validar edad mínima
+    if (edad !== null && edad < 14) {
+      setBloqueado(true);
+      setMensajeBloqueo("Lo sentimos, el registro requiere ser mayor de 14 años.");
+      return;
+    }
+
+    // 2. Validar residencia en Ciudad Bolívar
+    if (resideCiudadBolivar === false) {
+      setBloqueado(true);
+      setMensajeBloqueo("Lo sentimos, el proyecto es exclusivo para residentes de la localidad de Ciudad Bolívar.");
+      return;
+    }
+
+    // 3. Validar restricciones por línea de formación
+    if (lineaFormacion && edad) {
+      if (lineaFormacion === "conduccion" && (edad < 18 || edad > 60)) {
+        setBloqueado(true);
+        setMensajeBloqueo("La línea de Conducción solo está disponible para personas entre 18 y 60 años.");
+        return;
+      }
+      if (lineaFormacion === "vigilancia" && edad < 18) {
+        setBloqueado(true);
+        setMensajeBloqueo("La línea de Vigilancia y Seguridad Privada solo está disponible para mayores de 18 años.");
+        return;
+      }
+      if (lineaFormacion === "cuidado_estetico" && edad < 14) {
+        setBloqueado(true);
+        setMensajeBloqueo("La línea de Cuidado Estético solo está disponible para mayores de 14 años.");
+        return;
+      }
+    }
+
+    // 4. Validar grado escolar para Cuidado Estético
+    if (lineaFormacion === "cuidado_estetico" && ultimoGradoEscolar) {
+      if (ultimoGradoEscolar !== "bachiller") {
+        const grado = parseInt(ultimoGradoEscolar.replace(/\D/g, ""));
+        if (!isNaN(grado) && grado < 9) {
+          setBloqueado(true);
+          setMensajeBloqueo("Tu postulación no puede continuar, no cumples con el requisito técnico para acceder a esta línea de formación (Mínimo 9° grado).");
+          return;
+        }
+      }
+    }
+
+    // Si llegamos aquí, no hay bloqueos
+    setBloqueado(false);
+    setMensajeBloqueo("");
+  }, [edad, resideCiudadBolivar, lineaFormacion, ultimoGradoEscolar]);
+
   // Calcular edad cuando cambia fecha de nacimiento
   useEffect(() => {
     if (fechaNacimiento) {
@@ -175,76 +227,8 @@ export default function FormularioInscripcionView() {
         edadCalculada--;
       }
       setEdad(edadCalculada);
-
-      // Bloqueo si es menor de 14 años
-      if (edadCalculada < 14) {
-        setBloqueado(true);
-        setMensajeBloqueo("Lo sentimos, el registro requiere ser mayor de 14 años.");
-      } else {
-        setBloqueado(false);
-        setMensajeBloqueo("");
-      }
     }
   }, [fechaNacimiento]);
-
-  // Validar bloqueo de no residencia en Ciudad Bolívar
-  useEffect(() => {
-    if (resideCiudadBolivar === false) {
-      setBloqueado(true);
-      setMensajeBloqueo("Lo sentimos, el proyecto es exclusivo para residentes de la localidad de Ciudad Bolívar.");
-    } else if (edad && edad >= 14) {
-      setBloqueado(false);
-      setMensajeBloqueo("");
-    }
-  }, [resideCiudadBolivar, edad]);
-
-  // Validar restricciones por línea de formación
-  useEffect(() => {
-    if (lineaFormacion && edad) {
-      let bloqueadoPorLinea = false;
-      let mensaje = "";
-
-      switch (lineaFormacion) {
-        case "conduccion":
-          if (edad < 18 || edad > 60) {
-            bloqueadoPorLinea = true;
-            mensaje = "La línea de Conducción solo está disponible para personas entre 18 y 60 años.";
-          }
-          break;
-        case "vigilancia":
-          if (edad < 18) {
-            bloqueadoPorLinea = true;
-            mensaje = "La línea de Vigilancia y Seguridad Privada solo está disponible para mayores de 18 años.";
-          }
-          break;
-        case "cuidado_estetico":
-          if (edad < 14) {
-            bloqueadoPorLinea = true;
-            mensaje = "La línea de Cuidado Estético solo está disponible para mayores de 14 años.";
-          }
-          break;
-      }
-
-      if (bloqueadoPorLinea) {
-        setBloqueado(true);
-        setMensajeBloqueo(mensaje);
-      } else if (resideCiudadBolivar !== false) {
-        setBloqueado(false);
-        setMensajeBloqueo("");
-      }
-    }
-  }, [lineaFormacion, edad, resideCiudadBolivar]);
-
-  // Validar grado escolar para Cuidado Estético
-  useEffect(() => {
-    if (lineaFormacion === "cuidado_estetico" && ultimoGradoEscolar) {
-      const grado = parseInt(ultimoGradoEscolar.replace(/\D/g, ""));
-      if (grado < 9) {
-        setBloqueado(true);
-        setMensajeBloqueo("Tu postulación no puede continuar, no cumples con el requisito técnico para acceder a esta línea de formación (Mínimo 9° grado).");
-      }
-    }
-  }, [ultimoGradoEscolar, lineaFormacion]);
 
   // Validar migrante con PPT
   useEffect(() => {
