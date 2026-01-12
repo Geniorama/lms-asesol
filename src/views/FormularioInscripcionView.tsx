@@ -407,25 +407,50 @@ export default function FormularioInscripcionView() {
     <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-center mb-2 text-gray-800">
+        <div className="bg-white rounded-lg shadow-lg p-4 md:p-8 mb-6">
+          <div className="mb-6 relative">
+            {/* Botón limpiar progreso - Solo visible en desktop en la esquina */}
+            {tieneProgresoGuardado && (
+              <div className="hidden md:block absolute top-0 right-0">
+                <button
+                  type="button"
+                  onClick={limpiarProgreso}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 rounded-md transition-colors cursor-pointer border border-red-200"
+                  title="Limpiar progreso guardado"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Limpiar progreso
+                </button>
+              </div>
+            )}
+            
+            {/* Título */}
+            <div className="text-center">
+              <h1 className="text-2xl md:text-3xl font-bold mb-2 text-gray-800">
                 Formulario de Inscripción
               </h1>
-              <p className="text-center text-gray-600">
+              <p className="text-sm md:text-base text-gray-600">
                 Proyecto de Formación - Ciudad Bolívar
               </p>
             </div>
+            
+            {/* Botón limpiar progreso - Solo visible en mobile, centrado debajo */}
             {tieneProgresoGuardado && (
-              <button
-                type="button"
-                onClick={limpiarProgreso}
-                className="text-xs text-red-600 hover:text-red-800 underline whitespace-nowrap cursor-pointer"
-                title="Limpiar progreso guardado"
-              >
-                Limpiar progreso
-              </button>
+              <div className="md:hidden flex justify-center mt-4">
+                <button
+                  type="button"
+                  onClick={limpiarProgreso}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer border border-red-200 shadow-sm"
+                  title="Limpiar progreso guardado"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Limpiar progreso guardado
+                </button>
+              </div>
             )}
           </div>
 
