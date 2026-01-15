@@ -104,6 +104,8 @@ export default function FormularioInscripcionView() {
   const [progresoCargado, setProgresoCargado] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const [tieneProgresoGuardado, setTieneProgresoGuardado] = useState(false);
   const [pasoActualCompleto, setPasoActualCompleto] = useState(false);
 
@@ -568,7 +570,7 @@ export default function FormularioInscripcionView() {
     }
   };
 
-  const onSubmit = (data: FormularioInscripcion) => {
+  const onSubmit = async (data: FormularioInscripcion) => {
     if (bloqueado) {
       alert(mensajeBloqueo);
       return;
@@ -579,27 +581,77 @@ export default function FormularioInscripcionView() {
       alert("Por favor, completa la verificación de reCAPTCHA antes de enviar el formulario.");
       return;
     }
+
+    setEnviando(true);
+    setErrorEnvio(null);
     
-    // Agregar el puntaje calculado a los datos (solo para uso interno)
-    const datosConPuntaje = {
-      ...data,
-      puntajeInterno: puntajeTotal,
-      edadCalculada: edad,
-      recaptchaToken // Incluir el token para validación en backend
-    };
-    
-    console.log("Datos del formulario:", datosConPuntaje);
-    
-    // Limpiar localStorage después del envío exitoso
-    localStorage.removeItem("formulario-inscripcion-progreso");
-    localStorage.removeItem("formulario-inscripcion-paso");
-    setTieneProgresoGuardado(false);
-    
-    // Resetear reCAPTCHA
-    recaptchaRef.current?.reset();
-    setRecaptchaToken(null);
-    
-    alert("¡Formulario enviado exitosamente! Nos pondremos en contacto pronto.");
+    try {
+      // Agregar el puntaje calculado a los datos
+      const datosCompletos = {
+        ...data,
+        puntajeInterno: puntajeTotal,
+        edadCalculada: edad,
+        recaptchaToken // Incluir el token para validación en backend
+      };
+      
+      console.log("Enviando datos al servidor...");
+
+      // Enviar al API
+      const response = await fetch('/api/inscripciones', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(datosCompletos),
+      });
+
+      const resultado = await response.json();
+
+      if (!response.ok) {
+        // Error del servidor
+        throw new Error(resultado.error || 'Error al enviar la inscripción');
+      }
+
+      // Éxito!
+      console.log("Inscripción guardada:", resultado);
+      
+      // Limpiar localStorage después del envío exitoso
+      localStorage.removeItem("formulario-inscripcion-progreso");
+      localStorage.removeItem("formulario-inscripcion-paso");
+      setTieneProgresoGuardado(false);
+      
+      // Resetear reCAPTCHA
+      recaptchaRef.current?.reset();
+      setRecaptchaToken(null);
+      
+      // Mostrar mensaje de éxito
+      alert(
+        `¡Inscripción enviada exitosamente! 🎉\n\n` +
+        `Tu número de inscripción es: ${resultado.inscripcionId}\n\n` +
+        `Nos pondremos en contacto contigo pronto al correo: ${data.datosIdentificacion.correoElectronico}`
+      );
+
+      // Resetear el formulario
+      window.location.reload();
+
+    } catch (error) {
+      console.error('Error al enviar inscripción:', error);
+      const mensaje = error instanceof Error ? error.message : 'Error desconocido';
+      setErrorEnvio(mensaje);
+      
+      // Mostrar error al usuario
+      alert(
+        `❌ Error al enviar la inscripción\n\n` +
+        `${mensaje}\n\n` +
+        `Por favor, intenta nuevamente. Si el problema persiste, contacta con soporte.`
+      );
+      
+      // Resetear reCAPTCHA para permitir reintento
+      recaptchaRef.current?.reset();
+      setRecaptchaToken(null);
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
@@ -1672,6 +1724,21 @@ export default function FormularioInscripcionView() {
                   </p>
                 </div>
 
+                {/* Mensaje de error si existe */}
+                {errorEnvio && (
+                  <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <span className="text-red-500 text-xl">⚠️</span>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-red-700 font-medium">Error al enviar</p>
+                        <p className="text-sm text-red-600 mt-1">{errorEnvio}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* reCAPTCHA */}
                 <div className="flex flex-col items-center justify-center py-6">
                   <p className="text-sm text-gray-700 mb-4 font-medium">
@@ -1686,7 +1753,7 @@ export default function FormularioInscripcionView() {
                     theme="light"
                     size="normal"
                   />
-                  {!recaptchaToken && (
+                  {!recaptchaToken && !enviando && (
                     <p className="mt-2 text-sm text-gray-500">
                       Completa la verificación para poder enviar el formulario
                     </p>
@@ -1725,10 +1792,17 @@ export default function FormularioInscripcionView() {
             ) : (
               <button
                 type="submit"
-                disabled={bloqueado || !pasoActualCompleto || !recaptchaToken}
+                disabled={bloqueado || !pasoActualCompleto || !recaptchaToken || enviando}
                 className="px-8 py-3 bg-linear-to-r from-green-500 to-blue-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-blue-700 focus:ring-4 focus:ring-green-300 disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer transition-all shadow-lg"
               >
-                ✓ Enviar Inscripción
+                {enviando ? (
+                  <>
+                    <span className="inline-block animate-spin mr-2">⏳</span>
+                    Enviando...
+                  </>
+                ) : (
+                  <>✓ Enviar Inscripción</>
+                )}
               </button>
             )}
           </div>
