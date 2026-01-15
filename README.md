@@ -26,27 +26,34 @@ npm install
    - Ejecuta el SQL de `scripts/init-supabase.sql`
    - Copia tus credenciales
 
-2. **Configura variables de entorno:**
+2. **Configura Google reCAPTCHA:**
+   - Ve a [google.com/recaptcha/admin](https://www.google.com/recaptcha/admin)
+   - Crea un sitio reCAPTCHA v2 (checkbox)
+   - Copia la Site Key
+   - **📖 Guía detallada:** [`CONFIGURACION-RECAPTCHA.md`](./CONFIGURACION-RECAPTCHA.md)
+
+3. **Configura variables de entorno:**
    ```bash
    cp env.template .env.local
    # O en Windows: copy env.template .env.local
    # Edita .env.local con tus credenciales
    ```
 
-3. **Inicia el servidor:**
+4. **Inicia el servidor:**
    ```bash
    npm run dev
    ```
 
-4. **Accede a la aplicación:**
+5. **Accede a la aplicación:**
    - Abrir: `http://localhost:3000`
    - Usa las credenciales que configuraste en Supabase
 
 ## 📚 Documentación
 
 - **[PASOS-CONFIGURACION.md](./PASOS-CONFIGURACION.md)** - ⚡ Guía rápida (5 minutos)
-- **[SETUP_AUTH.md](./SETUP_AUTH.md)** - 🔧 Configuración detallada
-- **[README-AUTH.md](./README-AUTH.md)** - 📖 Documentación técnica y ejemplos
+- **[CONFIGURACION-RECAPTCHA.md](./CONFIGURACION-RECAPTCHA.md)** - 🛡️ Configurar reCAPTCHA v2
+- **[SETUP_AUTH.md](./SETUP_AUTH.md)** - 🔧 Configuración de autenticación
+- **[README-AUTH.md](./README-AUTH.md)** - 📖 Documentación técnica de auth
 - **[RESUMEN-IMPLEMENTACION.md](./RESUMEN-IMPLEMENTACION.md)** - ✅ Resumen de implementación
 
 ## ✨ Características
@@ -56,6 +63,7 @@ npm install
 - 🔐 **Autenticación completa** con NextAuth y Supabase
 - 👥 **Sistema de roles:** Estudiante y Administrador
 - 📝 **Formulario de inscripción** multi-paso con validación
+- 🛡️ **Google reCAPTCHA v2** para protección contra bots
 - 💾 **Auto-guardado** de progreso en localStorage
 - 📱 **Diseño responsive** y moderno
 - 🛡️ **Protección de rutas** con middleware
