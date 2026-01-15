@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 
 interface Inscripcion {
   id: number
@@ -20,7 +20,9 @@ interface Inscripcion {
   situacion_laboral: string
   puntaje_total: number
   estado: string
+  notas_admin: string | null
   fecha_inscripcion: string
+  fecha_actualizacion: string
 }
 
 interface InscripcionesResponse {
@@ -33,10 +35,11 @@ interface InscripcionesResponse {
 
 const ESTADOS = [
   { value: 'todos', label: 'Todos los estados' },
-  { value: 'pendiente', label: 'Pendiente' },
-  { value: 'aprobado', label: 'Aprobado' },
-  { value: 'rechazado', label: 'Rechazado' },
-  { value: 'en_revision', label: 'En Revisión' },
+  { value: 'interesada', label: 'Interesada' },
+  { value: 'verificada', label: 'Verificada' },
+  { value: 'participante', label: 'Participante (Seleccionada)' },
+  { value: 'lista_espera', label: 'Lista de Espera' },
+  { value: 'rechazada', label: 'Rechazada' },
 ]
 
 const LINEAS_FORMACION = [
@@ -49,10 +52,11 @@ const LINEAS_FORMACION = [
 ]
 
 const ESTADO_COLORS: Record<string, string> = {
-  pendiente: 'bg-yellow-100 text-yellow-800',
-  aprobado: 'bg-green-100 text-green-800',
-  rechazado: 'bg-red-100 text-red-800',
-  en_revision: 'bg-blue-100 text-blue-800',
+  interesada: 'bg-blue-100 text-blue-800',
+  verificada: 'bg-purple-100 text-purple-800',
+  participante: 'bg-green-100 text-green-800',
+  lista_espera: 'bg-yellow-100 text-yellow-800',
+  rechazada: 'bg-red-100 text-red-800',
 }
 
 export default function InscripcionesTable() {
@@ -69,9 +73,15 @@ export default function InscripcionesTable() {
 
   // Inscripción seleccionada para ver detalles
   const [selectedInscripcion, setSelectedInscripcion] = useState<Inscripcion | null>(null)
+  
+  // Estados para edición
+  const [editandoEstado, setEditandoEstado] = useState(false)
+  const [nuevoEstado, setNuevoEstado] = useState('')
+  const [notasAdmin, setNotasAdmin] = useState('')
+  const [guardandoEstado, setGuardandoEstado] = useState(false)
 
   // Cargar inscripciones
-  const cargarInscripciones = async () => {
+  const cargarInscripciones = useCallback(async () => {
     setLoading(true)
     setError(null)
 
@@ -95,17 +105,75 @@ export default function InscripcionesTable() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [estado, lineaFormacion, busqueda])
 
   // Cargar al montar y cuando cambien los filtros
   useEffect(() => {
     cargarInscripciones()
-  }, [estado, lineaFormacion, busqueda])
+  }, [cargarInscripciones])
 
   // Manejar búsqueda
   const handleBusqueda = (e: React.FormEvent) => {
     e.preventDefault()
     setBusqueda(busquedaTemp)
+  }
+
+  // Actualizar estado de inscripción
+  const actualizarEstado = async () => {
+    if (!selectedInscripcion || !nuevoEstado) return
+
+    setGuardandoEstado(true)
+    try {
+      const response = await fetch('/api/inscripciones', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: selectedInscripcion.id,
+          estado: nuevoEstado,
+          notas_admin: notasAdmin || null,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al actualizar')
+      }
+
+      await response.json()
+      
+      // Actualizar la inscripción en la lista
+      setInscripciones(prevInscripciones =>
+        prevInscripciones.map(insc =>
+          insc.id === selectedInscripcion.id
+            ? { ...insc, estado: nuevoEstado, notas_admin: notasAdmin || null }
+            : insc
+        )
+      )
+
+      // Actualizar la inscripción seleccionada
+      setSelectedInscripcion({
+        ...selectedInscripcion,
+        estado: nuevoEstado,
+        notas_admin: notasAdmin || null,
+      })
+
+      setEditandoEstado(false)
+      alert('Estado actualizado exitosamente')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al actualizar estado')
+    } finally {
+      setGuardandoEstado(false)
+    }
+  }
+
+  // Abrir modal de detalles
+  const abrirDetalles = (inscripcion: Inscripcion) => {
+    setSelectedInscripcion(inscripcion)
+    setNuevoEstado(inscripcion.estado)
+    setNotasAdmin(inscripcion.notas_admin || '')
+    setEditandoEstado(false)
   }
 
   // Formatear fecha
@@ -311,7 +379,7 @@ export default function InscripcionesTable() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <button
-                        onClick={() => setSelectedInscripcion(inscripcion)}
+                        onClick={() => abrirDetalles(inscripcion)}
                         className="text-purple-600 hover:text-purple-900 font-medium cursor-pointer"
                       >
                         Ver detalles
@@ -419,20 +487,80 @@ export default function InscripcionesTable() {
 
               {/* Estado */}
               <div>
-                <h4 className="text-lg font-semibold text-gray-900 mb-3">Estado y Fecha</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-sm text-gray-500">Estado Actual:</span>
-                    <p className="font-medium">
-                      <span className={`px-3 py-1 text-sm font-medium rounded ${ESTADO_COLORS[selectedInscripcion.estado] || 'bg-gray-100 text-gray-800'}`}>
-                        {capitalizar(selectedInscripcion.estado)}
-                      </span>
-                    </p>
+                <h4 className="text-lg font-semibold text-gray-900 mb-3">Gestión de Estado</h4>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-sm text-gray-500">Estado Actual:</span>
+                      {!editandoEstado ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`px-3 py-1 text-sm font-medium rounded ${ESTADO_COLORS[selectedInscripcion.estado] || 'bg-gray-100 text-gray-800'}`}>
+                            {capitalizar(selectedInscripcion.estado)}
+                          </span>
+                          <button
+                            onClick={() => setEditandoEstado(true)}
+                            className="text-purple-600 hover:text-purple-700 text-sm font-medium cursor-pointer"
+                          >
+                            Cambiar
+                          </button>
+                        </div>
+                      ) : (
+                        <select
+                          value={nuevoEstado}
+                          onChange={(e) => setNuevoEstado(e.target.value)}
+                          className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent cursor-pointer"
+                        >
+                          {ESTADOS.filter(e => e.value !== 'todos').map((estado) => (
+                            <option key={estado.value} value={estado.value}>
+                              {estado.label}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500">Fecha de Inscripción:</span>
+                      <p className="font-medium mt-1">{formatearFecha(selectedInscripcion.fecha_inscripcion)}</p>
+                    </div>
                   </div>
+
+                  {/* Notas Administrativas */}
                   <div>
-                    <span className="text-sm text-gray-500">Fecha de Inscripción:</span>
-                    <p className="font-medium">{formatearFecha(selectedInscripcion.fecha_inscripcion)}</p>
+                    <label className="text-sm text-gray-500 block mb-1">
+                      Notas Administrativas:
+                    </label>
+                    <textarea
+                      value={notasAdmin}
+                      onChange={(e) => setNotasAdmin(e.target.value)}
+                      disabled={!editandoEstado}
+                      placeholder="Agregar notas sobre el estado de esta inscripción..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-600 min-h-[80px]"
+                    />
                   </div>
+
+                  {/* Botones de acción */}
+                  {editandoEstado && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={actualizarEstado}
+                        disabled={guardandoEstado || nuevoEstado === selectedInscripcion.estado && notasAdmin === (selectedInscripcion.notas_admin || '')}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {guardandoEstado ? 'Guardando...' : 'Guardar Cambios'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditandoEstado(false)
+                          setNuevoEstado(selectedInscripcion.estado)
+                          setNotasAdmin(selectedInscripcion.notas_admin || '')
+                        }}
+                        disabled={guardandoEstado}
+                        className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

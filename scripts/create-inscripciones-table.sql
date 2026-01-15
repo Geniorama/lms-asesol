@@ -55,7 +55,11 @@ CREATE TABLE IF NOT EXISTS inscripciones (
   fecha_actualizacion TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   
   -- Estado de la inscripción
-  estado VARCHAR(50) DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'en_revision', 'aprobado', 'rechazado', 'completado'))
+  estado VARCHAR(50) DEFAULT 'interesada' CHECK (estado IN ('interesada', 'verificada', 'participante', 'lista_espera', 'rechazada')),
+  
+  -- Información administrativa
+  notas_admin TEXT,
+  modificado_por UUID REFERENCES users(id)
 );
 
 -- Crear índices para búsquedas frecuentes
@@ -65,6 +69,7 @@ CREATE INDEX IF NOT EXISTS idx_inscripciones_linea_formacion ON inscripciones(li
 CREATE INDEX IF NOT EXISTS idx_inscripciones_estado ON inscripciones(estado);
 CREATE INDEX IF NOT EXISTS idx_inscripciones_fecha ON inscripciones(fecha_inscripcion);
 CREATE INDEX IF NOT EXISTS idx_inscripciones_puntaje ON inscripciones(puntaje_total DESC);
+CREATE INDEX IF NOT EXISTS idx_inscripciones_modificado_por ON inscripciones(modificado_por);
 
 -- Trigger para actualizar fecha_actualizacion
 CREATE OR REPLACE FUNCTION update_inscripciones_updated_at()

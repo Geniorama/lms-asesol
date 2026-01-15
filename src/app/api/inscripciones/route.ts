@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       recaptcha_verificado: true,
       ip_address: ipAddress,
       user_agent: userAgent,
-      estado: 'pendiente',
+      estado: 'interesada',
     }
 
     // Insertar en Supabase
@@ -195,6 +195,100 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error en POST /api/inscripciones:', error)
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    )
+  }
+}
+
+// Endpoint PATCH para actualizar estado de inscripción (solo admins)
+export async function PATCH(request: NextRequest) {
+  try {
+    // Verificar autenticación
+    const session = await auth()
+    
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: 'No autenticado' },
+        { status: 401 }
+      )
+    }
+
+    // Verificar que sea admin
+    if (session.user.rol !== 'admin') {
+      return NextResponse.json(
+        { error: 'No autorizado. Se requiere rol de administrador.' },
+        { status: 403 }
+      )
+    }
+
+    // Obtener datos del body
+    const body = await request.json()
+    const { id, estado, notas_admin } = body
+
+    // Validar datos
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID de inscripción requerido' },
+        { status: 400 }
+      )
+    }
+
+    if (!estado) {
+      return NextResponse.json(
+        { error: 'Estado requerido' },
+        { status: 400 }
+      )
+    }
+
+    // Validar que el estado sea válido
+    const estadosValidos = ['interesada', 'verificada', 'participante', 'lista_espera', 'rechazada']
+    if (!estadosValidos.includes(estado)) {
+      return NextResponse.json(
+        { error: 'Estado inválido' },
+        { status: 400 }
+      )
+    }
+
+    // Actualizar en Supabase
+    const updateData: any = {
+      estado,
+      fecha_actualizacion: new Date().toISOString(),
+    }
+
+    // Agregar notas si se proporcionan
+    if (notas_admin !== undefined) {
+      updateData.notas_admin = notas_admin
+    }
+
+    const { data: inscripcion, error: dbError } = await supabaseAdmin
+      .from('inscripciones')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (dbError) {
+      console.error('Error al actualizar inscripción:', dbError)
+      return NextResponse.json(
+        { error: 'Error al actualizar la inscripción' },
+        { status: 500 }
+      )
+    }
+
+    // Respuesta exitosa
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Estado actualizado exitosamente',
+        data: inscripcion,
+      },
+      { status: 200 }
+    )
+
+  } catch (error) {
+    console.error('Error en PATCH /api/inscripciones:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
