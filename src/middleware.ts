@@ -11,12 +11,22 @@ export default auth((req) => {
 
   // Si intenta acceder a rutas protegidas sin estar logueado
   if ((isOnDashboard || isOnAdmin) && !isLoggedIn) {
-    return NextResponse.redirect(new URL('/login', nextUrl))
+    const response = NextResponse.redirect(new URL('/login', nextUrl))
+    // Headers agresivos para evitar caché
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    response.headers.set('Clear-Site-Data', '"cache", "cookies", "storage"')
+    return response
   }
 
   // Si intenta acceder a admin sin ser admin
   if (isOnAdmin && isLoggedIn && req.auth?.user?.rol !== 'admin') {
-    return NextResponse.redirect(new URL('/dashboard', nextUrl))
+    const response = NextResponse.redirect(new URL('/dashboard', nextUrl))
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    return response
   }
 
   // Si está logueado e intenta acceder a login, redirigir a dashboard
@@ -27,9 +37,11 @@ export default auth((req) => {
   // Agregar headers de no-cache para páginas protegidas
   if (isOnDashboard || isOnAdmin) {
     const response = NextResponse.next()
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0, s-maxage=0')
     response.headers.set('Pragma', 'no-cache')
     response.headers.set('Expires', '0')
+    response.headers.set('Surrogate-Control', 'no-store')
+    response.headers.set('X-Accel-Expires', '0')
     return response
   }
 

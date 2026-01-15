@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
-import { signOut } from "@/auth"
+import LogoutButton from "@/components/LogoutButton"
 
 // Forzar revalidación en cada request (sin caché)
 export const dynamic = 'force-dynamic'
@@ -29,19 +29,7 @@ export default async function DashboardPage() {
             </p>
           </div>
           
-          <form
-            action={async () => {
-              "use server"
-              await signOut({ redirectTo: "/login" })
-            }}
-          >
-            <button
-              type="submit"
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors cursor-pointer"
-            >
-              Cerrar Sesión
-            </button>
-          </form>
+          <LogoutButton className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed" />
         </div>
       </header>
 
