@@ -1,9 +1,10 @@
 "use client"
 
 import { useForm } from "react-hook-form"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import type { FormularioInscripcion } from "@/types"
 import FileUpload from "@/components/FileUpload"
+import ReCAPTCHA from "react-google-recaptcha"
 
 // Datos de ejemplo para los campos desplegables
 const BARRIOS_CIUDAD_BOLIVAR = [
@@ -101,6 +102,8 @@ export default function FormularioInscripcionView() {
   const [mensajeBloqueo, setMensajeBloqueo] = useState("");
   const [puntajeTotal, setPuntajeTotal] = useState(0);
   const [progresoCargado, setProgresoCargado] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
   const [tieneProgresoGuardado, setTieneProgresoGuardado] = useState(false);
   const [pasoActualCompleto, setPasoActualCompleto] = useState(false);
 
@@ -570,12 +573,19 @@ export default function FormularioInscripcionView() {
       alert(mensajeBloqueo);
       return;
     }
+
+    // Validar reCAPTCHA
+    if (!recaptchaToken) {
+      alert("Por favor, completa la verificación de reCAPTCHA antes de enviar el formulario.");
+      return;
+    }
     
     // Agregar el puntaje calculado a los datos (solo para uso interno)
     const datosConPuntaje = {
       ...data,
       puntajeInterno: puntajeTotal,
-      edadCalculada: edad
+      edadCalculada: edad,
+      recaptchaToken // Incluir el token para validación en backend
     };
     
     console.log("Datos del formulario:", datosConPuntaje);
@@ -584,6 +594,10 @@ export default function FormularioInscripcionView() {
     localStorage.removeItem("formulario-inscripcion-progreso");
     localStorage.removeItem("formulario-inscripcion-paso");
     setTieneProgresoGuardado(false);
+    
+    // Resetear reCAPTCHA
+    recaptchaRef.current?.reset();
+    setRecaptchaToken(null);
     
     alert("¡Formulario enviado exitosamente! Nos pondremos en contacto pronto.");
   };
@@ -1657,6 +1671,27 @@ export default function FormularioInscripcionView() {
                     Revisa que toda la información sea correcta antes de enviar.
                   </p>
                 </div>
+
+                {/* reCAPTCHA */}
+                <div className="flex flex-col items-center justify-center py-6">
+                  <p className="text-sm text-gray-700 mb-4 font-medium">
+                    Verificación de seguridad <span className="text-red-500">*</span>
+                  </p>
+                  <ReCAPTCHA
+                    ref={recaptchaRef}
+                    sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}
+                    onChange={(token) => setRecaptchaToken(token)}
+                    onExpired={() => setRecaptchaToken(null)}
+                    onErrored={() => setRecaptchaToken(null)}
+                    theme="light"
+                    size="normal"
+                  />
+                  {!recaptchaToken && (
+                    <p className="mt-2 text-sm text-gray-500">
+                      Completa la verificación para poder enviar el formulario
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -1690,7 +1725,7 @@ export default function FormularioInscripcionView() {
             ) : (
               <button
                 type="submit"
-                disabled={bloqueado || !pasoActualCompleto}
+                disabled={bloqueado || !pasoActualCompleto || !recaptchaToken}
                 className="px-8 py-3 bg-linear-to-r from-green-500 to-blue-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-blue-700 focus:ring-4 focus:ring-green-300 disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer transition-all shadow-lg"
               >
                 ✓ Enviar Inscripción
