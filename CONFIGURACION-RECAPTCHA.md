@@ -72,25 +72,35 @@ Ejemplo: 6LcXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 ### 3.1 Desarrollo Local
 
-Abre tu archivo `.env.local` y agrega:
+Abre tu archivo `.env.local` y agrega **AMBAS** claves:
 
 ```env
 # Google reCAPTCHA v2
+# Site Key (pública, para el frontend)
 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=tu-site-key-aqui
+
+# Secret Key (privada, para el backend)
+RECAPTCHA_SECRET_KEY=tu-secret-key-aqui
 ```
 
 **Ejemplo:**
 ```env
 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=6LcXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+RECAPTCHA_SECRET_KEY=6LcXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
+
+⚠️ **IMPORTANTE:** La Secret Key NUNCA debe exponerse en el código del cliente. Solo se usa en el servidor.
 
 ### 3.2 Producción (Netlify)
 
 1. Ve a tu proyecto en Netlify
 2. **Site configuration** → **Environment variables**
-3. Agrega la variable:
+3. Agrega **AMBAS** variables:
    - **Key:** `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`
    - **Value:** Tu Site Key de reCAPTCHA
+   
+   - **Key:** `RECAPTCHA_SECRET_KEY`
+   - **Value:** Tu Secret Key de reCAPTCHA
 4. Guarda y redeploy
 
 ---
@@ -186,28 +196,33 @@ Selecciona tu sitio para ver:
 
 ---
 
-## 🔐 Buenas Prácticas de Seguridad
+## 🔐 Seguridad Implementada
 
-### 1. Validación en Backend (Próximamente)
+### ✅ Validación Completa (Frontend + Backend)
 
-Actualmente, solo validamos en frontend. Para mayor seguridad, deberías:
+La implementación actual incluye validación en ambos lados:
 
+**Frontend:**
+- Muestra el widget de reCAPTCHA
+- Captura el token cuando el usuario verifica
+- Deshabilita el botón hasta completar la verificación
+
+**Backend:**
+- API endpoint: `/api/inscripciones`
+- Valida el token con Google usando la Secret Key
+- Solo guarda los datos si la verificación es exitosa
+- Protege contra bots y envíos automatizados
+
+**Flujo completo:**
 ```typescript
-// En tu API endpoint
-const response = await fetch(
-  'https://www.google.com/recaptcha/api/siteverify',
-  {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `secret=${SECRET_KEY}&response=${recaptchaToken}`
-  }
-)
-
-const data = await response.json()
-
-if (!data.success) {
-  return res.status(400).json({ error: 'reCAPTCHA verification failed' })
-}
+1. Usuario completa el formulario
+2. Usuario marca "No soy un robot"
+3. Frontend obtiene el token
+4. Usuario hace clic en "Enviar"
+5. Frontend envía datos + token al API
+6. Backend valida el token con Google
+7. Si es válido → guarda en Supabase
+8. Si es inválido → rechaza y muestra error
 ```
 
 ### 2. Protección de Claves
@@ -228,22 +243,31 @@ En la consola de reCAPTCHA puedes:
 
 ## 🎯 Resumen
 
-✅ **Lo que hicimos:**
-1. Instalamos `react-google-recaptcha`
-2. Agregamos reCAPTCHA al paso 6 del formulario
-3. El botón de envío solo funciona si reCAPTCHA está verificado
-4. El token se incluye con los datos del formulario
+✅ **Lo que se implementó:**
+1. ✅ Instalado `react-google-recaptcha`
+2. ✅ reCAPTCHA en el paso 6 del formulario
+3. ✅ Validación en frontend (token requerido)
+4. ✅ **API endpoint `/api/inscripciones`**
+5. ✅ **Validación del token con Google (backend)**
+6. ✅ **Guardado automático en Supabase**
+7. ✅ Manejo de errores y estados de carga
+8. ✅ Tabla `inscripciones` con todos los campos
 
 ✅ **Lo que debes hacer:**
 1. Crear el sitio en Google reCAPTCHA
-2. Copiar la Site Key
-3. Agregarla a `.env.local` y Netlify
-4. Probar en desarrollo y producción
+2. Copiar **AMBAS** claves (Site Key y Secret Key)
+3. Agregarlas a `.env.local` y Netlify
+4. **Ejecutar el SQL** `scripts/create-inscripciones-table.sql` en Supabase
+5. Probar el formulario completo
 
-✅ **Próximos pasos (opcional):**
-1. Implementar validación del token en el backend
-2. Guardar el resultado de la verificación con los datos
-3. Implementar rate limiting adicional
+✅ **Funcionalidades incluidas:**
+- 🛡️ Protección contra bots
+- 💾 Guardado automático en base de datos
+- 🔍 Validación de duplicados (número de documento)
+- 📊 Seguimiento de IP y User Agent
+- ✅ Estados: pendiente, en_revision, aprobado, rechazado
+- 🎯 Puntaje calculado automáticamente
+- 📧 Respuestas con ID de inscripción
 
 ---
 
