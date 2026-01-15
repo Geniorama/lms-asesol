@@ -12,18 +12,22 @@ export const authConfig = {
       const isOnDashboard = nextUrl.pathname.startsWith('/dashboard')
       const isOnAdmin = nextUrl.pathname.startsWith('/admin')
       const isOnLogin = nextUrl.pathname.startsWith('/login')
+      const isOnGracias = nextUrl.pathname.startsWith('/gracias')
       
-      // Permitir acceso al formulario de inscripción sin autenticación
-      if (nextUrl.pathname.startsWith('/formulario-inscripcion')) {
+      // Permitir acceso público a estas rutas
+      if (nextUrl.pathname.startsWith('/formulario-inscripcion') || 
+          nextUrl.pathname === '/' ||
+          isOnGracias) {
         return true
       }
       
+      // Proteger rutas de dashboard y admin
       if (isOnDashboard || isOnAdmin) {
-        if (!isLoggedIn) return false // Redirigir a login
+        if (!isLoggedIn) return false
         
         // Verificar rol para admin
         if (isOnAdmin && auth.user.rol !== 'admin') {
-          return false // Middleware manejará la redirección
+          return false
         }
         
         return true
@@ -31,7 +35,7 @@ export const authConfig = {
       
       // Redirigir a dashboard si ya está logueado e intenta acceder a login
       if (isLoggedIn && isOnLogin) {
-        return false // Middleware manejará la redirección
+        return false
       }
       
       return true
