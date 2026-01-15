@@ -3,6 +3,10 @@ import { redirect } from "next/navigation"
 import { signOut } from "@/auth"
 import InscripcionesTable from "@/components/InscripcionesTable"
 
+// Forzar revalidación en cada request (sin caché)
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function AdminPage() {
   const session = await auth()
 

@@ -2,6 +2,10 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { signOut } from "@/auth"
 
+// Forzar revalidación en cada request (sin caché)
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function DashboardPage() {
   const session = await auth()
 
