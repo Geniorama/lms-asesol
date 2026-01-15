@@ -6,16 +6,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "hash-password": "node scripts/hash-password.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.47.10",
+    "bcryptjs": "^2.4.3",
     "next": "16.1.1",
+    "next-auth": "5.0.0-beta.25",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-hook-form": "^7.71.0"
+    "react-hook-form": "^7.71.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
