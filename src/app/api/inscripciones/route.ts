@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { auth } from '@/auth'
 import { z } from 'zod'
 
 // Esquema de validación
@@ -204,12 +205,83 @@ export async function POST(request: NextRequest) {
 // Endpoint GET para obtener inscripciones (solo admins)
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Agregar autenticación y verificar que sea admin
-    // Por ahora, retornamos un mensaje
+    // Verificar autenticación
+    const session = await auth()
+    
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: 'No autenticado' },
+        { status: 401 }
+      )
+    }
+
+    // Verificar que sea admin
+    if (session.user.rol !== 'admin') {
+      return NextResponse.json(
+        { error: 'No autorizado. Se requiere rol de administrador.' },
+        { status: 403 }
+      )
+    }
+
+    // Obtener parámetros de query para filtros y paginación
+    const searchParams = request.nextUrl.searchParams
+    const estado = searchParams.get('estado')
+    const lineaFormacion = searchParams.get('lineaFormacion')
+    const busqueda = searchParams.get('busqueda')
+    const limit = parseInt(searchParams.get('limit') || '100')
+    const offset = parseInt(searchParams.get('offset') || '0')
+
+    // Construir query base
+    let query = supabaseAdmin
+      .from('inscripciones')
+      .select('*', { count: 'exact' })
+      .order('fecha_inscripcion', { ascending: false })
+
+    // Aplicar filtros
+    if (estado && estado !== 'todos') {
+      query = query.eq('estado', estado)
+    }
+
+    if (lineaFormacion && lineaFormacion !== 'todos') {
+      query = query.eq('linea_formacion', lineaFormacion)
+    }
+
+    if (busqueda && busqueda.trim() !== '') {
+      // Buscar en nombres, apellidos, email o documento
+      query = query.or(
+        `nombres.ilike.%${busqueda}%,` +
+        `apellidos.ilike.%${busqueda}%,` +
+        `correo_electronico.ilike.%${busqueda}%,` +
+        `numero_documento.ilike.%${busqueda}%`
+      )
+    }
+
+    // Aplicar paginación
+    query = query.range(offset, offset + limit - 1)
+
+    // Ejecutar query
+    const { data: inscripciones, error: dbError, count } = await query
+
+    if (dbError) {
+      console.error('Error al obtener inscripciones:', dbError)
+      return NextResponse.json(
+        { error: 'Error al obtener las inscripciones' },
+        { status: 500 }
+      )
+    }
+
+    // Respuesta exitosa
     return NextResponse.json(
-      { message: 'Endpoint para listar inscripciones (requiere autenticación de admin)' },
+      {
+        success: true,
+        data: inscripciones || [],
+        total: count || 0,
+        limit,
+        offset,
+      },
       { status: 200 }
     )
+
   } catch (error) {
     console.error('Error en GET /api/inscripciones:', error)
     return NextResponse.json(
