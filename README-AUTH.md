@@ -55,10 +55,10 @@ Ejecuta el SQL en Supabase (archivo `supabase-schema.sql`):
 Genera un hash de contraseña:
 
 ```bash
-node scripts/hash-password.mjs "Admin123!"
+node scripts/hash-password.mjs "TuContraseñaSegura"
 ```
 
-Luego inserta el admin en Supabase.
+Luego inserta el usuario admin en Supabase usando el SQL del esquema.
 
 ---
 

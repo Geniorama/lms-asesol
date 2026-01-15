@@ -59,22 +59,20 @@ openssl rand -base64 32
 Ejecuta este SQL en Supabase para crear el admin por defecto:
 
 ```sql
--- Instalar bcrypt para generar el hash
--- Puedes usar: https://bcrypt-generator.com/
--- Contraseña: Admin123!
+-- Genera tu hash de contraseña primero:
+-- node scripts/hash-password.mjs "TuContraseñaSegura"
 
 INSERT INTO users (email, password_hash, nombre, apellidos, rol) 
 VALUES (
-  'admin@asesol.com',
-  -- Hash para Admin123! (generado con bcrypt)
-  '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
-  'Administrador',
-  'Sistema',
+  'tu-email@ejemplo.com',
+  'el-hash-generado-aqui',
+  'Tu Nombre',
+  'Tus Apellidos',
   'admin'
 );
 ```
 
-**IMPORTANTE:** Cambia la contraseña inmediatamente después del primer login.
+**IMPORTANTE:** Usa credenciales seguras y únicas para tu proyecto.
 
 ### 4. Instalar Dependencias
 
@@ -93,11 +91,9 @@ npm run dev
 
 Visita: `http://localhost:3000/login`
 
-## 🔐 Credenciales por Defecto
+## 🔐 Configurar Usuario Admin
 
-**Admin:**
-- Email: `admin@asesol.com`
-- Password: `Admin123!`
+Crea tu usuario administrador con credenciales seguras usando los pasos de la sección anterior.
 
 ## 🎯 Rutas Protegidas
 

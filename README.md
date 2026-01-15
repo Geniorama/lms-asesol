@@ -40,7 +40,7 @@ npm install
 
 4. **Accede a la aplicación:**
    - Abrir: `http://localhost:3000`
-   - Login: `admin@asesol.com` / `Admin123!`
+   - Usa las credenciales que configuraste en Supabase
 
 ## 📚 Documentación
 
@@ -201,7 +201,7 @@ npm run lint
 
 ### Error: "Invalid credentials"
 - Verifica que ejecutaste el SQL en Supabase
-- Usa las credenciales: admin@asesol.com / Admin123!
+- Usa las credenciales que configuraste en el SQL
 - Revisa la consola del navegador
 
 ### Error: "Cannot connect to Supabase"

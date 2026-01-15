@@ -243,14 +243,9 @@ node scripts/hash-password.mjs "MiContraseña123!"
 
 ---
 
-## 🔑 Credenciales por Defecto
+## 🔑 Configuración de Credenciales
 
-```
-Email: admin@asesol.com
-Password: Admin123!
-```
-
-⚠️ **IMPORTANTE:** Cambiar después del primer login
+Las credenciales de administrador deben ser configuradas durante el setup inicial ejecutando el SQL de `scripts/init-supabase.sql` con tus propios valores seguros.
 
 ---
 
@@ -340,7 +335,7 @@ SUPABASE_SERVICE_ROLE_KEY=xxx
 2. **Configura:** Supabase y `.env.local`
 3. **Ejecuta:** `npm run dev`
 4. **Accede:** `http://localhost:3000/login`
-5. **Login:** admin@asesol.com / Admin123!
+5. **Login:** Usa las credenciales que configuraste
 
 ---
 

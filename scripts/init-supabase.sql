@@ -58,18 +58,17 @@ CREATE TRIGGER update_users_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- 8. Insertar usuario admin por defecto
--- IMPORTANTE: Usa el script hash-password.mjs para generar un hash seguro
--- Ejemplo: node scripts/hash-password.mjs "Admin123!"
+-- 8. Insertar usuario admin
+-- IMPORTANTE: Genera tu propio hash usando:
+-- node scripts/hash-password.mjs "TuContraseñaSegura"
 -- 
--- Este hash es para la contraseña: Admin123!
--- CÁMBIALA INMEDIATAMENTE después del primer login
+-- Luego reemplaza los valores a continuación:
 INSERT INTO users (email, password_hash, nombre, apellidos, rol) 
 VALUES (
-  'admin@asesol.com',
-  '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
-  'Administrador',
-  'Sistema',
+  'tu-email@ejemplo.com',  -- Cambia esto
+  'tu-hash-generado-aqui',  -- Cambia esto por el hash generado
+  'Tu Nombre',  -- Cambia esto
+  'Tus Apellidos',  -- Cambia esto
   'admin'
 )
 ON CONFLICT (email) DO NOTHING;

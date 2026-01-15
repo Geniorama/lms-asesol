@@ -51,14 +51,14 @@ CREATE TRIGGER update_users_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- Insertar usuario admin por defecto (cambiar contraseña después)
--- Contraseña: Admin123! (debes cambiarla inmediatamente)
+-- Insertar usuario admin (genera tu propio hash primero)
+-- Usa: node scripts/hash-password.mjs "TuContraseñaSegura"
 INSERT INTO users (email, password_hash, nombre, apellidos, rol) 
 VALUES (
-  'admin@asesol.com',
-  '$2a$10$rZ3qVYKZ2qJxYYqZQJ8xKOXz1Z8qVYKZ2qJxYYqZQJ8xKOXz1Z8qV', -- Placeholder, se generará con bcrypt
-  'Administrador',
-  'Sistema',
+  'tu-email@ejemplo.com',  -- Reemplaza con tu email
+  'tu-hash-generado-aqui',  -- Reemplaza con el hash que generaste
+  'Tu Nombre',  -- Reemplaza con tu nombre
+  'Tus Apellidos',  -- Reemplaza con tus apellidos
   'admin'
 )
 ON CONFLICT (email) DO NOTHING;

@@ -75,11 +75,7 @@ npm run dev
 
 1. Abre tu navegador en: `http://localhost:3000/login`
 
-2. **Credenciales por defecto:**
-   ```
-   Email: admin@asesol.com
-   Password: Admin123!
-   ```
+2. **Usa las credenciales que configuraste en el Paso 1**
 
 3. **¡Ya está!** Deberías ver el dashboard.
 
@@ -87,15 +83,15 @@ npm run dev
 
 ## 🔐 IMPORTANTE: Cambia la Contraseña del Admin
 
-**Opción 1: Desde Supabase (Recomendado)**
+**Para cambiar tu contraseña:**
 
 1. Genera un nuevo hash:
    ```bash
-   node scripts/hash-password.mjs "TuNuevaContraseñaSegura123!"
+   node scripts/hash-password.mjs "TuNuevaContraseñaSegura"
    ```
 
 2. Ve a Supabase → Table Editor → `users`
-3. Busca `admin@asesol.com`
+3. Busca tu usuario
 4. Edita el campo `password_hash` con el nuevo hash
 5. Guarda
 
@@ -135,7 +131,7 @@ lms-asesol/
 - [ ] `.env.local` creado y configurado
 - [ ] `npm install` completado
 - [ ] `npm run dev` funcionando
-- [ ] Login exitoso con admin@asesol.com
+- [ ] Login exitoso con tus credenciales
 - [ ] Puedes ver el dashboard
 - [ ] Puedes acceder al panel admin
 

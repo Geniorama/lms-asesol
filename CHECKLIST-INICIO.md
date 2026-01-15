@@ -130,8 +130,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGci... (token largo diferente)
 
 ### 5.2 Iniciar Sesión
 
-- [ ] Email: `admin@asesol.com`
-- [ ] Password: `Admin123!`
+- [ ] Usa el email y contraseña que configuraste en el SQL
 - [ ] Click en "Iniciar Sesión"
 - [ ] Esperar redirección automática
 
@@ -139,8 +138,8 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGci... (token largo diferente)
 
 - [ ] Deberías estar en: `http://localhost:3000/dashboard`
 - [ ] Verifica que se vea:
-  - ✅ Tu nombre: "Administrador Sistema"
-  - ✅ Email: admin@asesol.com
+  - ✅ Tu nombre y apellidos
+  - ✅ Tu email
   - ✅ Rol: Administrador
   - ✅ Botón "Panel de Administración"
   - ✅ Botón "Cerrar Sesión"
@@ -177,13 +176,13 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGci... (token largo diferente)
 
 ---
 
-## 📋 Fase 7: Cambiar Contraseña Admin (IMPORTANTE)
+## 📋 Fase 7: Verificar Contraseña (OPCIONAL)
 
-### 7.1 Generar Nueva Contraseña
+### 7.1 Cambiar Contraseña si es Necesario
 
 - [ ] En terminal (nueva ventana, sin cerrar el servidor):
   ```bash
-  node scripts/hash-password.mjs "TuNuevaContraseñaSegura123!"
+  node scripts/hash-password.mjs "TuNuevaContraseña"
   ```
 - [ ] Copiar el hash generado
 
@@ -191,7 +190,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGci... (token largo diferente)
 
 - [ ] Ir a Supabase → Table Editor
 - [ ] Seleccionar tabla `users`
-- [ ] Buscar el registro de `admin@asesol.com`
+- [ ] Buscar tu registro de usuario
 - [ ] Click en editar (ícono de lápiz)
 - [ ] Pegar el nuevo hash en el campo `password_hash`
 - [ ] Guardar
@@ -199,9 +198,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGci... (token largo diferente)
 ### 7.3 Probar Nueva Contraseña
 
 - [ ] Cerrar sesión en la app
-- [ ] Intentar login con:
-  - Email: `admin@asesol.com`
-  - Password: `TuNuevaContraseñaSegura123!`
+- [ ] Intentar login con las nuevas credenciales
 - [ ] Debería funcionar correctamente
 
 ---
@@ -285,12 +282,11 @@ Si algo no funcionó, revisa:
 - URL: En tu dashboard de Supabase
 - Database Password: La que elegiste al crear el proyecto
 
-**Aplicación (por defecto):**
-- Email: `admin@asesol.com`
-- Password: `Admin123!` (¡cámbiala!)
+**Aplicación:**
+- Configura tus propias credenciales durante el setup inicial
 
 **IMPORTANTE:** 
-- ⚠️ Cambia la contraseña del admin
+- 🔒 Usa credenciales seguras y únicas
 - 🔒 No compartas el `service_role` key
 - 💾 Guarda tus credenciales en lugar seguro
 
