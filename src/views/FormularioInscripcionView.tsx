@@ -1,7 +1,7 @@
 "use client"
 
 import { useForm } from "react-hook-form"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import type { FormularioInscripcion } from "@/types"
 import FileUpload from "@/components/FileUpload"
 
@@ -102,6 +102,7 @@ export default function FormularioInscripcionView() {
   const [puntajeTotal, setPuntajeTotal] = useState(0);
   const [progresoCargado, setProgresoCargado] = useState(false);
   const [tieneProgresoGuardado, setTieneProgresoGuardado] = useState(false);
+  const [pasoActualCompleto, setPasoActualCompleto] = useState(false);
 
   // Cargar progreso guardado desde localStorage al montar el componente
   useEffect(() => {
@@ -151,6 +152,13 @@ export default function FormularioInscripcionView() {
   const tipoDocumento = watch("datosIdentificacion.tipoDocumento");
   const resideCiudadBolivar = watch("ubicacionTerritorial.resideCiudadBolivar");
   const ultimoGradoEscolar = watch("seleccionComponente.ultimoGradoEscolar");
+  const tieneLicencia = watch("seleccionComponente.tieneLicencia");
+  const tieneAntecedentes = watch("seleccionComponente.tieneAntecedentes");
+  const emprendimientoDomiciliadoCB = watch("seleccionComponente.emprendimientoDomiciliadoCB");
+  const tieneNegocio = watch("seleccionComponente.tieneNegocio");
+  
+  // Watch para todos los campos del formulario
+  const todosLosCampos = watch();
   
   // Watch para calculadora de puntaje
   const regimenSalud = watch("calculadoraPuntaje.regimenSalud");
@@ -211,10 +219,32 @@ export default function FormularioInscripcionView() {
       }
     }
 
+    // 5. Validar que NO tenga licencia para Conducción (filtro excluyente)
+    if (lineaFormacion === "conduccion" && tieneLicencia) {
+      setBloqueado(true);
+      setMensajeBloqueo("No puede continuar por esta línea si ya tiene licencia de conducción. Este programa está dirigido a personas que aún no cuentan con licencia.");
+      return;
+    }
+
+    // 6. Validar que NO tenga antecedentes para Vigilancia (filtro excluyente)
+    if (lineaFormacion === "vigilancia" && tieneAntecedentes) {
+      setBloqueado(true);
+      setMensajeBloqueo("No puede continuar por esta línea si tiene antecedentes judiciales (Decreto 1565).");
+      return;
+    }
+
+    // 7. Validar que el emprendimiento/idea esté domiciliado en CB (filtro excluyente)
+    // Aplica tanto para negocios activos como para ideas
+    if (lineaFormacion === "emprendimiento" && tieneNegocio && emprendimientoDomiciliadoCB === false) {
+      setBloqueado(true);
+      setMensajeBloqueo("Solo se aceptan emprendimientos e ideas domiciliados en la localidad de Ciudad Bolívar.");
+      return;
+    }
+
     // Si llegamos aquí, no hay bloqueos
     setBloqueado(false);
     setMensajeBloqueo("");
-  }, [edad, resideCiudadBolivar, lineaFormacion, ultimoGradoEscolar]);
+  }, [edad, resideCiudadBolivar, lineaFormacion, ultimoGradoEscolar, tieneLicencia, tieneAntecedentes, emprendimientoDomiciliadoCB, tieneNegocio]);
 
   // Calcular edad cuando cambia fecha de nacimiento
   useEffect(() => {
@@ -299,8 +329,123 @@ export default function FormularioInscripcionView() {
     setPuntajeTotal(puntaje);
   }, [regimenSalud, esCuidadora, tieneDiscapacidad, grupoEtnico, esVictima, firmantePaz, tieneProteccion, viveZonaRural, identidadLGBTIQ, esMigrante]);
 
+  // Verificar si el paso actual está completo (para habilitar/deshabilitar botón)
+  const verificarPasoCompleto = useCallback(() => {
+    const datos = todosLosCampos;
+
+    switch (pasoActual) {
+      case 1:
+        return !!(
+          datos.datosIdentificacion?.nombres &&
+          datos.datosIdentificacion?.apellidos &&
+          datos.datosIdentificacion?.numeroDocumento &&
+          datos.datosIdentificacion?.fechaNacimiento &&
+          datos.datosIdentificacion?.telefonoPrincipal &&
+          datos.datosIdentificacion?.telefonoSecundario &&
+          datos.datosIdentificacion?.correoElectronico &&
+          // Validar formato de email
+          /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(datos.datosIdentificacion?.correoElectronico || "") &&
+          // Validar formato de teléfonos (10 dígitos)
+          /^[0-9]{10}$/.test(datos.datosIdentificacion?.telefonoPrincipal || "") &&
+          /^[0-9]{10}$/.test(datos.datosIdentificacion?.telefonoSecundario || "")
+        );
+
+      case 2:
+        return !!(
+          datos.ubicacionTerritorial?.direccion &&
+          datos.ubicacionTerritorial?.barrio &&
+          datos.ubicacionTerritorial?.upz_upl &&
+          datos.ubicacionTerritorial?.reciboPublico &&
+          datos.ubicacionTerritorial?.resideCiudadBolivar === true
+        );
+
+      case 3:
+        if (!datos.seleccionComponente?.lineaFormacion) return false;
+
+        if (lineaFormacion === "emprendimiento") {
+          // No permitir continuar si el emprendimiento/idea NO está domiciliado en CB
+          if (datos.seleccionComponente?.tieneNegocio && 
+              datos.seleccionComponente?.emprendimientoDomiciliadoCB === false) {
+            return false;
+          }
+          
+          // Requiere todos los campos obligatorios incluyendo checkbox de domicilio
+          return !!(
+            datos.seleccionComponente?.tieneNegocio &&
+            datos.seleccionComponente?.estadoEmprendimiento &&
+            datos.seleccionComponente?.emprendimientoDomiciliadoCB === true
+          );
+        } else if (lineaFormacion === "cuidado_estetico") {
+          return !!datos.seleccionComponente?.ultimoGradoEscolar;
+        } else if (lineaFormacion === "conduccion") {
+          // No permitir continuar si ya tiene licencia
+          if (datos.seleccionComponente?.tieneLicencia) {
+            return false;
+          }
+        } else if (lineaFormacion === "vigilancia") {
+          // No permitir continuar si tiene antecedentes
+          if (datos.seleccionComponente?.tieneAntecedentes) {
+            return false;
+          }
+        }
+        
+        return true;
+
+      case 4:
+        const baseCompleto = !!(
+          datos.calculadoraPuntaje?.regimenSalud &&
+          datos.calculadoraPuntaje?.certificadoAdres
+        );
+
+        if (!baseCompleto) return false;
+
+        // Si es cuidadora, validar campos adicionales
+        if (datos.calculadoraPuntaje?.esCuidadora) {
+          return !!(
+            datos.calculadoraPuntaje?.tipoCuidado &&
+            datos.calculadoraPuntaje?.personaCuidada?.nombres &&
+            datos.calculadoraPuntaje?.personaCuidada?.apellidos &&
+            datos.calculadoraPuntaje?.personaCuidada?.identificacion
+          );
+        }
+
+        return true;
+
+      case 5:
+        const perfilCompleto = !!(
+          datos.perfilSociolaboral?.nivelEducativo &&
+          datos.perfilSociolaboral?.situacionLaboral
+        );
+
+        if (!perfilCompleto) return false;
+
+        // Si tiene hijos, validar número
+        if (datos.perfilSociolaboral?.tieneHijos) {
+          return !!(datos.perfilSociolaboral?.numeroHijos && datos.perfilSociolaboral.numeroHijos > 0);
+        }
+
+        return true;
+
+      case 6:
+        return !!(
+          datos.legalCierre?.aceptaDeclaracion &&
+          datos.legalCierre?.aceptaAutorizacionDatos &&
+          datos.legalCierre?.aceptaCompromiso
+        );
+
+      default:
+        return false;
+    }
+  }, [todosLosCampos, pasoActual, lineaFormacion]);
+
+  // Actualizar estado cuando cambien los campos
+  useEffect(() => {
+    setPasoActualCompleto(verificarPasoCompleto());
+  }, [verificarPasoCompleto]);
+
   const validarPasoActual = async () => {
     let camposAValidar: string[] = [];
+    const datosFormulario = watch();
 
     switch (pasoActual) {
       case 1:
@@ -321,20 +466,60 @@ export default function FormularioInscripcionView() {
           "ubicacionTerritorial.barrio",
           "ubicacionTerritorial.upz_upl"
         ];
+        
+        // Validar recibo público (obligatorio)
+        if (!datosFormulario.ubicacionTerritorial?.reciboPublico) {
+          alert("Por favor, carga el Recibo Público. Es un requisito obligatorio.");
+          return false;
+        }
+        
+        // Validar checkbox de residencia
+        if (!datosFormulario.ubicacionTerritorial?.resideCiudadBolivar) {
+          alert("Debes confirmar que resides en la localidad de Ciudad Bolívar.");
+          return false;
+        }
         break;
       case 3:
         camposAValidar = ["seleccionComponente.lineaFormacion"];
+        
         if (lineaFormacion === "emprendimiento") {
           camposAValidar.push(
             "seleccionComponente.tieneNegocio",
             "seleccionComponente.estadoEmprendimiento"
           );
+          
+          // Validar checkbox de emprendimiento domiciliado en CB
+          if (!datosFormulario.seleccionComponente?.emprendimientoDomiciliadoCB) {
+            alert("Debes confirmar que tu emprendimiento/idea está domiciliado en Ciudad Bolívar.");
+            return false;
+          }
         } else if (lineaFormacion === "cuidado_estetico") {
           camposAValidar.push("seleccionComponente.ultimoGradoEscolar");
         }
         break;
       case 4:
         camposAValidar = ["calculadoraPuntaje.regimenSalud"];
+        
+        // Validar certificado ADRES (obligatorio)
+        if (!datosFormulario.calculadoraPuntaje?.certificadoAdres) {
+          alert("Por favor, carga el Certificado ADRES. Es obligatorio.");
+          return false;
+        }
+        
+        // Validar certificados condicionales obligatorios
+        if (datosFormulario.calculadoraPuntaje?.esCuidadora) {
+          if (!datosFormulario.calculadoraPuntaje?.tipoCuidado) {
+            alert("Por favor, selecciona el tipo de cuidado.");
+            return false;
+          }
+          // Validar datos de persona cuidada
+          if (!datosFormulario.calculadoraPuntaje?.personaCuidada?.nombres ||
+              !datosFormulario.calculadoraPuntaje?.personaCuidada?.apellidos ||
+              !datosFormulario.calculadoraPuntaje?.personaCuidada?.identificacion) {
+            alert("Por favor, completa los datos de la persona cuidada.");
+            return false;
+          }
+        }
         break;
       case 5:
         camposAValidar = [
@@ -834,21 +1019,24 @@ export default function FormularioInscripcionView() {
                       </div>
                     )}
 
-                    <div>
-                      <label className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          {...register("seleccionComponente.emprendimientoDomiciliadoCB", { required: "Debe confirmar que su emprendimiento está domiciliado en Ciudad Bolívar" })}
-                          className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <span className="text-sm font-medium text-gray-700">
-                          ¿Su emprendimiento/idea está domiciliado en Ciudad Bolívar? <span className="text-red-500">*</span>
-                        </span>
-                      </label>
-                      {errors.seleccionComponente?.emprendimientoDomiciliadoCB && (
-                        <p className="mt-1 text-sm text-red-600">{errors.seleccionComponente.emprendimientoDomiciliadoCB.message}</p>
-                      )}
-                    </div>
+                    {/* Checkbox de domicilio - Solo se muestra si ya seleccionó Negocio Activo o Idea */}
+                    {tieneNegocio && (
+                      <div>
+                        <label className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            {...register("seleccionComponente.emprendimientoDomiciliadoCB", { required: "Debe confirmar que su emprendimiento está domiciliado en Ciudad Bolívar" })}
+                            className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-medium text-gray-700">
+                            ¿Su emprendimiento/idea está domiciliado en Ciudad Bolívar? <span className="text-red-500">*</span>
+                          </span>
+                        </label>
+                        {errors.seleccionComponente?.emprendimientoDomiciliadoCB && (
+                          <p className="mt-1 text-sm text-red-600">{errors.seleccionComponente.emprendimientoDomiciliadoCB.message}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1494,7 +1682,7 @@ export default function FormularioInscripcionView() {
               <button
                 type="button"
                 onClick={siguientePaso}
-                disabled={bloqueado}
+                disabled={bloqueado || !pasoActualCompleto}
                 className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer transition-colors"
               >
                 Siguiente →
@@ -1502,7 +1690,7 @@ export default function FormularioInscripcionView() {
             ) : (
               <button
                 type="submit"
-                disabled={bloqueado}
+                disabled={bloqueado || !pasoActualCompleto}
                 className="px-8 py-3 bg-linear-to-r from-green-500 to-blue-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-blue-700 focus:ring-4 focus:ring-green-300 disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer transition-all shadow-lg"
               >
                 ✓ Enviar Inscripción
