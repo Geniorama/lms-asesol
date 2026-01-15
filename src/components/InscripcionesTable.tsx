@@ -24,6 +24,7 @@ interface Inscripcion {
   fecha_inscripcion: string
   fecha_actualizacion: string
   total_upz?: number // Equidad territorial: total de inscritas en la misma UPZ/UPL
+  datos_calculadora?: any // JSON con los datos de la calculadora de puntaje
 }
 
 interface InscripcionesResponse {
@@ -267,12 +268,139 @@ export default function InscripcionesTable() {
     })
   }
 
+  // Formatear fecha y hora completa
+  const formatearFechaHora = (fecha: string) => {
+    const date = new Date(fecha)
+    return date.toLocaleString('es-CO', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    })
+  }
+
   // Capitalizar texto
   const capitalizar = (texto: string) => {
     return texto
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ')
+  }
+
+  // Generar desglose del puntaje
+  const generarDesglosePuntaje = (datosCalculadora: any) => {
+    if (!datosCalculadora) return []
+
+    const criterios = []
+
+    // 1. Salud y Seguridad Social
+    if (
+      datosCalculadora.regimenSalud === 'subsidiado' ||
+      datosCalculadora.regimenSalud === 'contributivo_beneficiaria' ||
+      datosCalculadora.regimenSalud === 'no_afiliada'
+    ) {
+      criterios.push({
+        nombre: 'Salud y Seguridad Social',
+        detalle: capitalizar(datosCalculadora.regimenSalud || ''),
+        puntos: 1
+      })
+    }
+
+    // 2. Rol de Cuidado
+    if (datosCalculadora.esCuidadora) {
+      criterios.push({
+        nombre: 'Rol de Cuidado',
+        detalle: 'Es cuidadora',
+        puntos: 1
+      })
+    }
+
+    // 3. Discapacidad
+    if (datosCalculadora.tieneDiscapacidad) {
+      criterios.push({
+        nombre: 'Discapacidad',
+        detalle: 'Presenta condición de discapacidad certificada',
+        puntos: 1
+      })
+    }
+
+    // 4. Pertenencia Étnica
+    if (
+      datosCalculadora.grupoEtnico &&
+      datosCalculadora.grupoEtnico !== 'ninguno' &&
+      datosCalculadora.grupoEtnico !== ''
+    ) {
+      criterios.push({
+        nombre: 'Pertenencia Étnica',
+        detalle: capitalizar(datosCalculadora.grupoEtnico),
+        puntos: 1
+      })
+    }
+
+    // 5. Víctima del Conflicto
+    if (datosCalculadora.esVictima) {
+      criterios.push({
+        nombre: 'Víctima del Conflicto',
+        detalle: 'Incluida en el RUV',
+        puntos: 1
+      })
+    }
+
+    // 6. Construcción de Paz
+    if (datosCalculadora.firmantePaz) {
+      criterios.push({
+        nombre: 'Construcción de Paz',
+        detalle: 'Firmante del acuerdo de paz',
+        puntos: 1
+      })
+    }
+
+    // 7. Protección
+    if (datosCalculadora.tieneProteccion) {
+      criterios.push({
+        nombre: 'Protección',
+        detalle: 'Medida de protección activa',
+        puntos: 1
+      })
+    }
+
+    // 8. Ruralidad
+    if (datosCalculadora.viveZonaRural) {
+      criterios.push({
+        nombre: 'Ruralidad',
+        detalle: 'Vive en zona rural de Ciudad Bolívar',
+        puntos: 1
+      })
+    }
+
+    // 9. Diversidad Sexual
+    if (
+      datosCalculadora.identidadLGBTIQ &&
+      datosCalculadora.identidadLGBTIQ !== 'no' &&
+      datosCalculadora.identidadLGBTIQ !== ''
+    ) {
+      criterios.push({
+        nombre: 'Diversidad Sexual',
+        detalle: capitalizar(datosCalculadora.identidadLGBTIQ === 'otro' && datosCalculadora.identidadOtra 
+          ? datosCalculadora.identidadOtra 
+          : datosCalculadora.identidadLGBTIQ),
+        puntos: 1
+      })
+    }
+
+    // 10. Población Migrante
+    if (datosCalculadora.esMigrante) {
+      criterios.push({
+        nombre: 'Población Migrante',
+        detalle: 'Es migrante',
+        puntos: 1
+      })
+    }
+
+    return criterios
   }
 
   return (
@@ -483,8 +611,9 @@ export default function InscripcionesTable() {
                         {capitalizar(inscripcion.estado)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatearFecha(inscripcion.fecha_inscripcion)}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{formatearFecha(inscripcion.fecha_inscripcion)}</div>
+                      <div className="text-xs text-gray-500">{formatearFechaHora(inscripcion.fecha_inscripcion).split(',')[1]}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <button
@@ -587,21 +716,61 @@ export default function InscripcionesTable() {
                     <span className="text-sm text-gray-500">Situación Laboral:</span>
                     <p className="font-medium">{selectedInscripcion.situacion_laboral}</p>
                   </div>
-                  <div>
-                    <span className="text-sm text-gray-500">Puntaje Total:</span>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-purple-700">{selectedInscripcion.puntaje_total} puntos</p>
-                      <button
-                        onClick={() => recalcularPuntaje(selectedInscripcion.id)}
-                        disabled={recalculandoPuntaje}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Recalcular puntaje basado en los criterios actuales"
-                      >
-                        {recalculandoPuntaje ? '⏳' : '🔄 Recalcular'}
-                      </button>
-                    </div>
+                </div>
+              </div>
+
+              {/* Desglose de Puntaje */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-lg font-semibold text-gray-900">Desglose de Puntaje</h4>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 text-lg font-bold text-purple-700 bg-purple-100 rounded-lg">
+                      {selectedInscripcion.puntaje_total} / 10 puntos
+                    </span>
+                    <button
+                      onClick={() => recalcularPuntaje(selectedInscripcion.id)}
+                      disabled={recalculandoPuntaje}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Recalcular puntaje basado en los criterios actuales"
+                    >
+                      {recalculandoPuntaje ? '⏳' : '🔄 Recalcular'}
+                    </button>
                   </div>
                 </div>
+                
+                {selectedInscripcion.datos_calculadora ? (
+                  <div className="space-y-2">
+                    {generarDesglosePuntaje(selectedInscripcion.datos_calculadora).map((criterio, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div>
+                          <p className="font-medium text-green-900">{criterio.nombre}</p>
+                          <p className="text-sm text-green-700">{criterio.detalle}</p>
+                        </div>
+                        <span className="px-2 py-1 bg-green-600 text-white text-sm font-bold rounded">
+                          +{criterio.puntos}
+                        </span>
+                      </div>
+                    ))}
+                    
+                    {generarDesglosePuntaje(selectedInscripcion.datos_calculadora).length === 0 && (
+                      <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center text-gray-600">
+                        No cumple con ningún criterio de puntaje
+                      </div>
+                    )}
+
+                    {generarDesglosePuntaje(selectedInscripcion.datos_calculadora).length < 10 && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          <strong>Criterios no cumplidos:</strong> {10 - generarDesglosePuntaje(selectedInscripcion.datos_calculadora).length} de 10
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center text-gray-600">
+                    No hay datos de calculadora disponibles
+                  </div>
+                )}
               </div>
 
               {/* Estado */}
@@ -638,8 +807,11 @@ export default function InscripcionesTable() {
                       )}
                     </div>
                     <div>
-                      <span className="text-sm text-gray-500">Fecha de Inscripción:</span>
-                      <p className="font-medium mt-1">{formatearFecha(selectedInscripcion.fecha_inscripcion)}</p>
+                      <span className="text-sm text-gray-500">Fecha y Hora de Inscripción:</span>
+                      <p className="font-medium mt-1">{formatearFechaHora(selectedInscripcion.fecha_inscripcion)}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Timestamp: {new Date(selectedInscripcion.fecha_inscripcion).getTime()}
+                      </p>
                     </div>
                   </div>
 
