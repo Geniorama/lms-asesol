@@ -2,6 +2,7 @@
 
 import { useForm } from "react-hook-form"
 import { useState, useEffect, useCallback, useRef } from "react"
+import { useRouter } from "next/navigation"
 import type { FormularioInscripcion } from "@/types"
 import FileUpload from "@/components/FileUpload"
 import ReCAPTCHA from "react-google-recaptcha"
@@ -46,6 +47,7 @@ const PASOS = [
 ];
 
 export default function FormularioInscripcionView() {
+  const router = useRouter();
   const { register, handleSubmit, watch, formState: { errors }, setValue, setError, clearErrors, trigger } = useForm<FormularioInscripcion>({
     mode: "onChange",
     defaultValues: {
@@ -624,15 +626,8 @@ export default function FormularioInscripcionView() {
       recaptchaRef.current?.reset();
       setRecaptchaToken(null);
       
-      // Mostrar mensaje de éxito
-      alert(
-        `¡Inscripción enviada exitosamente! 🎉\n\n` +
-        `Tu número de inscripción es: ${resultado.inscripcionId}\n\n` +
-        `Nos pondremos en contacto contigo pronto al correo: ${data.datosIdentificacion.correoElectronico}`
-      );
-
-      // Resetear el formulario
-      window.location.reload();
+      // Redirigir a la página de agradecimiento
+      router.push('/gracias');
 
     } catch (error) {
       console.error('Error al enviar inscripción:', error);
