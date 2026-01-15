@@ -23,7 +23,7 @@ export const authConfig = {
         
         // Verificar rol para admin
         if (isOnAdmin && auth.user.rol !== 'admin') {
-          return Response.redirect(new URL('/dashboard', nextUrl))
+          return false // Middleware manejará la redirección
         }
         
         return true
@@ -31,7 +31,7 @@ export const authConfig = {
       
       // Redirigir a dashboard si ya está logueado e intenta acceder a login
       if (isLoggedIn && isOnLogin) {
-        return Response.redirect(new URL('/dashboard', nextUrl))
+        return false // Middleware manejará la redirección
       }
       
       return true

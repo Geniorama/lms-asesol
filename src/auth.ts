@@ -13,6 +13,7 @@ const credentialsSchema = z.object({
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  trustHost: true, // Necesario para Netlify y otros hosting
   providers: [
     Credentials({
       credentials: {
