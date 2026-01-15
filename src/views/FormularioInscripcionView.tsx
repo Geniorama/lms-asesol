@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import type { FormularioInscripcion } from "@/types"
 import FileUpload from "@/components/FileUpload"
 import ReCAPTCHA from "react-google-recaptcha"
+import { calcularPuntaje } from "@/lib/calcularPuntaje"
 
 // Datos de ejemplo para los campos desplegables
 const BARRIOS_CIUDAD_BOLIVAR = [
@@ -279,62 +280,12 @@ export default function FormularioInscripcionView() {
     }
   }, [esMigrante, tipoDocumento, setError, clearErrors]);
 
-  // Calcular puntaje total
+  // Calcular puntaje total usando la función centralizada
   useEffect(() => {
-    let puntaje = 0;
-
-    // Salud (1 punto)
-    if (regimenSalud === "subsidiado" || regimenSalud === "contributivo_beneficiaria" || regimenSalud === "no_afiliada") {
-      puntaje += 1;
-    }
-
-    // Rol de Cuidado (1 punto)
-    if (esCuidadora) {
-      puntaje += 1;
-    }
-
-    // Discapacidad (1 punto)
-    if (tieneDiscapacidad) {
-      puntaje += 1;
-    }
-
-    // Pertenencia Étnica (1 punto)
-    if (grupoEtnico && grupoEtnico !== "ninguno") {
-      puntaje += 1;
-    }
-
-    // Víctima del Conflicto (1 punto)
-    if (esVictima) {
-      puntaje += 1;
-    }
-
-    // Construcción de Paz (1 punto)
-    if (firmantePaz) {
-      puntaje += 1;
-    }
-
-    // Protección (1 punto)
-    if (tieneProteccion) {
-      puntaje += 1;
-    }
-
-    // Ruralidad (1 punto)
-    if (viveZonaRural) {
-      puntaje += 1;
-    }
-
-    // Diversidad Sexual (1 punto)
-    if (identidadLGBTIQ && identidadLGBTIQ !== "no") {
-      puntaje += 1;
-    }
-
-    // Población Migrante (1 punto)
-    if (esMigrante) {
-      puntaje += 1;
-    }
-
+    const calculadoraData = watch("calculadoraPuntaje");
+    const puntaje = calcularPuntaje(calculadoraData);
     setPuntajeTotal(puntaje);
-  }, [regimenSalud, esCuidadora, tieneDiscapacidad, grupoEtnico, esVictima, firmantePaz, tieneProteccion, viveZonaRural, identidadLGBTIQ, esMigrante]);
+  }, [watch, regimenSalud, esCuidadora, tieneDiscapacidad, grupoEtnico, esVictima, firmantePaz, tieneProteccion, viveZonaRural, identidadLGBTIQ, esMigrante]);
 
   // Verificar si el paso actual está completo (para habilitar/deshabilitar botón)
   const verificarPasoCompleto = useCallback(() => {

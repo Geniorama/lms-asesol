@@ -325,11 +325,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '100')
     const offset = parseInt(searchParams.get('offset') || '0')
 
-    // Construir query base
+    // Construir query base con conteo de equidad territorial
+    // Nota: Supabase no soporta subconsultas directamente, así que haremos el ordenamiento en dos pasos
     let query = supabaseAdmin
       .from('inscripciones')
       .select('*', { count: 'exact' })
-      .order('fecha_inscripcion', { ascending: false })
 
     // Aplicar filtros
     if (estado && estado !== 'todos') {
@@ -364,11 +364,68 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Si no hay inscripciones, retornar
+    if (!inscripciones || inscripciones.length === 0) {
+      return NextResponse.json(
+        {
+          success: true,
+          data: [],
+          total: count || 0,
+          limit,
+          offset,
+        },
+        { status: 200 }
+      )
+    }
+
+    // PASO 2: Calcular equidad territorial (conteo de inscritas por UPZ/UPL)
+    // Obtener todas las UPZ/UPL únicas de las inscripciones actuales
+    const upzList = [...new Set(inscripciones.map((i: any) => i.upz_upl))]
+    
+    // Contar total de inscritas por cada UPZ/UPL
+    const upzCounts: Record<string, number> = {}
+    
+    for (const upz of upzList) {
+      const { count: upzCount } = await supabaseAdmin
+        .from('inscripciones')
+        .select('*', { count: 'exact', head: true })
+        .eq('upz_upl', upz)
+      
+      upzCounts[upz] = upzCount || 0
+    }
+
+    // PASO 3: Agregar el conteo a cada inscripción y ordenar
+    const inscripcionesConEquidad = inscripciones.map((inscripcion: any) => ({
+      ...inscripcion,
+      total_upz: upzCounts[inscripcion.upz_upl] || 0
+    }))
+
+    // PASO 4: Ordenar según los 3 criterios de priorización
+    // 1. PUNTAJE_TOTAL (mayor a menor)
+    // 2. FECHA_INSCRIPCION (primero en inscribirse = mayor prioridad)
+    // 3. EQUIDAD_TERRITORIAL (menor total en UPZ = mayor prioridad)
+    inscripcionesConEquidad.sort((a: any, b: any) => {
+      // 1. Comparar por puntaje (descendente: mayor puntaje primero)
+      if (b.puntaje_total !== a.puntaje_total) {
+        return b.puntaje_total - a.puntaje_total
+      }
+      
+      // 2. Si empatan en puntaje, comparar por fecha (ascendente: primero en tiempo primero)
+      const fechaA = new Date(a.fecha_inscripcion).getTime()
+      const fechaB = new Date(b.fecha_inscripcion).getTime()
+      if (fechaA !== fechaB) {
+        return fechaA - fechaB
+      }
+      
+      // 3. Si empatan en puntaje y fecha, comparar por equidad territorial (ascendente: menor total primero)
+      return a.total_upz - b.total_upz
+    })
+
     // Respuesta exitosa
     return NextResponse.json(
       {
         success: true,
-        data: inscripciones || [],
+        data: inscripcionesConEquidad,
         total: count || 0,
         limit,
         offset,

@@ -23,6 +23,7 @@ interface Inscripcion {
   notas_admin: string | null
   fecha_inscripcion: string
   fecha_actualizacion: string
+  total_upz?: number // Equidad territorial: total de inscritas en la misma UPZ/UPL
 }
 
 interface InscripcionesResponse {
@@ -79,6 +80,10 @@ export default function InscripcionesTable() {
   const [nuevoEstado, setNuevoEstado] = useState('')
   const [notasAdmin, setNotasAdmin] = useState('')
   const [guardandoEstado, setGuardandoEstado] = useState(false)
+  
+  // Estados para recalcular puntaje
+  const [recalculandoPuntaje, setRecalculandoPuntaje] = useState(false)
+  const [recalculandoTodos, setRecalculandoTodos] = useState(false)
 
   // Cargar inscripciones
   const cargarInscripciones = useCallback(async () => {
@@ -176,6 +181,83 @@ export default function InscripcionesTable() {
     setEditandoEstado(false)
   }
 
+  // Recalcular puntaje de una inscripción
+  const recalcularPuntaje = async (id: number) => {
+    setRecalculandoPuntaje(true)
+    try {
+      const response = await fetch('/api/inscripciones/recalcular-puntaje', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al recalcular puntaje')
+      }
+
+      const data = await response.json()
+      
+      // Actualizar la inscripción en la lista
+      setInscripciones(prevInscripciones =>
+        prevInscripciones.map(insc =>
+          insc.id === id
+            ? { ...insc, puntaje_total: data.puntaje_nuevo }
+            : insc
+        )
+      )
+
+      // Actualizar la inscripción seleccionada si es la misma
+      if (selectedInscripcion && selectedInscripcion.id === id) {
+        setSelectedInscripcion({
+          ...selectedInscripcion,
+          puntaje_total: data.puntaje_nuevo,
+        })
+      }
+
+      alert(`Puntaje recalculado exitosamente:\nAnterior: ${data.puntaje_anterior} pts\nNuevo: ${data.puntaje_nuevo} pts`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al recalcular puntaje')
+    } finally {
+      setRecalculandoPuntaje(false)
+    }
+  }
+
+  // Recalcular puntaje de TODAS las inscripciones
+  const recalcularTodosPuntajes = async () => {
+    if (!confirm('¿Estás seguro de que deseas recalcular el puntaje de TODAS las inscripciones? Esto puede tardar un momento.')) {
+      return
+    }
+
+    setRecalculandoTodos(true)
+    try {
+      const response = await fetch('/api/inscripciones/recalcular-puntaje', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al recalcular puntajes')
+      }
+
+      const data = await response.json()
+      
+      alert(`Recálculo completado:\nTotal inscripciones: ${data.total_inscripciones}\nActualizadas: ${data.total_actualizadas}\nErrores: ${data.total_errores}`)
+      
+      // Recargar las inscripciones
+      cargarInscripciones()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al recalcular puntajes')
+    } finally {
+      setRecalculandoTodos(false)
+    }
+  }
+
   // Formatear fecha
   const formatearFecha = (fecha: string) => {
     return new Date(fecha).toLocaleDateString('es-CO', {
@@ -202,17 +284,36 @@ export default function InscripcionesTable() {
           <p className="text-sm text-gray-600 mt-1">
             Total: <span className="font-semibold">{total}</span> {total === 1 ? 'inscripción' : 'inscripciones'}
           </p>
+          <p className="text-xs text-purple-600 mt-1 flex items-center gap-1">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Ordenado por: 1° Puntaje (mayor), 2° Fecha (primero en tiempo), 3° Equidad Territorial (UPZ con menos inscritas)
+          </p>
         </div>
-        <button
-          onClick={cargarInscripciones}
-          disabled={loading}
-          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Actualizar
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={recalcularTodosPuntajes}
+            disabled={loading || recalculandoTodos}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            title="Recalcular puntajes de todas las inscripciones"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+            {recalculandoTodos ? 'Recalculando...' : 'Recalcular Todos'}
+          </button>
+          <button
+            onClick={cargarInscripciones}
+            disabled={loading}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -319,13 +420,13 @@ export default function InscripcionesTable() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ID
+                    #
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Nombre Completo
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Documento
+                    UPZ/UPL
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Línea
@@ -345,10 +446,10 @@ export default function InscripcionesTable() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {inscripciones.map((inscripcion) => (
+                {inscripciones.map((inscripcion, index) => (
                   <tr key={inscripcion.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      #{inscripcion.id}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-purple-600">
+                      {index + 1}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -357,9 +458,17 @@ export default function InscripcionesTable() {
                       <div className="text-sm text-gray-500">
                         {inscripcion.correo_electronico}
                       </div>
+                      <div className="text-xs text-gray-400">
+                        {inscripcion.tipo_documento} {inscripcion.numero_documento}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {inscripcion.tipo_documento} {inscripcion.numero_documento}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{inscripcion.upz_upl}</div>
+                      {inscripcion.total_upz !== undefined && (
+                        <div className="text-xs text-gray-500" title="Total de inscritas en esta UPZ/UPL">
+                          {inscripcion.total_upz} {inscripcion.total_upz === 1 ? 'inscrita' : 'inscritas'}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {capitalizar(inscripcion.linea_formacion)}
@@ -480,7 +589,17 @@ export default function InscripcionesTable() {
                   </div>
                   <div>
                     <span className="text-sm text-gray-500">Puntaje Total:</span>
-                    <p className="font-medium text-purple-700">{selectedInscripcion.puntaje_total} puntos</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-purple-700">{selectedInscripcion.puntaje_total} puntos</p>
+                      <button
+                        onClick={() => recalcularPuntaje(selectedInscripcion.id)}
+                        disabled={recalculandoPuntaje}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Recalcular puntaje basado en los criterios actuales"
+                      >
+                        {recalculandoPuntaje ? '⏳' : '🔄 Recalcular'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
